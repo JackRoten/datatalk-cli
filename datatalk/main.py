@@ -126,6 +126,22 @@ def load_data(args: argparse.Namespace, printer: Printer) -> tuple[duckdb.DuckDB
     
     return con, schema_info
 
+def load_data_plus(args: argparse.Namespace, printer: Printer) -> tuple[duckdb.DuckDBPyConnection, str]:
+    """Load data file and return database connection with schema."""
+    
+    file_object = file_handler(args, printer)
+
+    con = database.create_connection()
+    database.load_data(con, args.file)
+    schema_info = database.get_schema(con)
+
+    printer.decorative("\n[green]Data loaded successfully![/green]", highlight=False)
+    
+    stats = database.get_stats(con)
+    print_stats(stats, printer, not args.no_schema)
+    
+    return con, schema_info
+
 
 def output_json(result: dict[str, Any]) -> None:
     """Output query results as JSON."""
@@ -263,7 +279,6 @@ def main():
         
         validate_args(parser, args, printer)
         provider = setup_environment(args, printer)
-        file_object = file_handler(args, printer)
         con, schema_info = load_data(args, printer)
 
         if args.prompt:

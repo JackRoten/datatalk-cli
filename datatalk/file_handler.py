@@ -1,6 +1,7 @@
 # import openpyxl
 import argparse
-from openpyxl import Workbook, load_workbook
+from re import S
+from openpyxl import Workbook, load_workbook, workbook
 
 def csv_file(path: str):
     """
@@ -28,6 +29,18 @@ def excel_file(path :str):
     if len(sheets) > 1:
         print(f"More than one sheet: {sheets}")
 
+    # sheet = workbook.active
+
+    sheet = wb[sheets[0]] 
+    
+
+    # display top five rows
+    num_top_rows = 5
+    for row in sheet.iter_rows(min_row=1, max_row=num_top_rows):
+        # Iterate over the cells in each row to print their values
+        row_values = [cell.value for cell in row]
+        print(row_values)
+    
     pass
 
 def pdf_file(path: str):
@@ -38,9 +51,25 @@ def pdf_file(path: str):
     """
     pass
 
-path = "/Users/jackroten/Code/github.com/jackroten/datatalk-cli/tests/test_data_2_sheets_e2e.xlsx"
+
+
+def file_handler(args, printer):
+    # Extension conditions
+    file_object = None
+    if args.extension == "csv" or "txt":
+        file_object = csv_handler(args.file)
+        pass
+    elif args.extension == "xlsx":
+        file_object = excel_handler(arg.file)
+        # pass
+    elif args.extension == "pdf":
+        file_object = pdf_handler(arg.file)
+        # pass
+    else:
+        print(f"{args.extension} file not supported: if you want to support this type of file raise an issue with datatalk-cli")
+
+    return file_object
+
+# path = "/Users/jackroten/Code/github.com/jackroten/datatalk-cli/tests/test_data_2_sheets_e2e.xlsx"
 # path = "/Users/jackroten/Code/github.com/jackroten/datatalk-cli/tests/test_data_floating_table_e2e.xlsx"
-excel_file(path)
-
-
-def file_handler(args: argparse, )
+# file_handler(path)

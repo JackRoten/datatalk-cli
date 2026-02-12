@@ -35,6 +35,32 @@ def load_data(con: duckdb.DuckDBPyConnection, path: str) -> None:
             f"Supported formats: .csv, .parquet, .xlsx, .xls"
         )
 
+def load_data_plus(con: duckdb.DuckDBPyConnection, obj) -> None:
+    """Load CSV, Parquet, or Excel file into DuckDB and create a table named 'events'."""
+    
+    file_obj = io.StringIO(csv_data)
+    
+    file_extension = file_path.suffix.lower()
+
+    con.execute("DROP TABLE IF EXISTS events;")
+
+
+    if file_extension == ".parquet":
+        con.execute(f"CREATE TABLE events AS SELECT * FROM read_parquet('{obj}');")
+    elif file_extension == ".csv":
+        con.execute(
+            f"CREATE TABLE events AS SELECT * FROM "
+            f"read_csv_auto('{obj}', HEADER=TRUE);"
+        )
+    elif file_extension in [".xlsx", ".xls"]:
+        df = pd.read_excel(obj)
+        con.execute("CREATE TABLE events AS SELECT * FROM df")
+    else:
+        raise ValueError(
+            f"Unsupported file format: {file_extension}. "
+            f"Supported formats: .csv, .parquet, .xlsx, .xls"
+        )
+
 
 def get_schema(con: duckdb.DuckDBPyConnection) -> str:
     """Return a simple schema description for the 'events' table."""
