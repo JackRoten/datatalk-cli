@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 from rich.console import Console
 from rich.syntax import Syntax
 
-from datatalk import database, query
+from datatalk import database, query, file_handler
 from datatalk.llm import LiteLLMProvider
 from datatalk.printer import (
     Printer,
@@ -106,6 +106,12 @@ def setup_environment(args: argparse.Namespace, printer: Printer) -> LiteLLMProv
     
     return LiteLLMProvider(model)
 
+def file_handler(args: argparse.Namespace, printer: Printer) -> tuple[Objected, stg]:
+    """
+    Handle various file formats
+    """
+    file_obj = args.file
+    file_handler
 
 def load_data(args: argparse.Namespace, printer: Printer) -> tuple[duckdb.DuckDBPyConnection, str]:
     """Load data file and return database connection with schema."""
@@ -257,6 +263,7 @@ def main():
         
         validate_args(parser, args, printer)
         provider = setup_environment(args, printer)
+        file_object = file_handler(args, printer)
         con, schema_info = load_data(args, printer)
 
         if args.prompt:
