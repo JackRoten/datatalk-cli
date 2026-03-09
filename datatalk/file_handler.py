@@ -1,75 +1,96 @@
-# import openpyxl
-import argparse
-from re import S
-from openpyxl import Workbook, load_workbook, workbook
+"""File format handling with interactive selection for multi-sheet Excel files."""
 
-def csv_file(path: str):
-    """
-    Offer ability to handle skip rows in .csv files 
-    """
-    # read in file and check for spaces in headers
-    pass
+from pathlib import Path
+
+import pandas as pd
+from openpyxl import load_workbook
+from rich import box
+from rich.table import Table
+
+from datatalk.printer import Printer
 
 
-def excel_file(path :str):
-    """
-    Interface for excel files
-    1st if there are more than one sheet, ask user which sheet to use
-    Allow for switching between different excel sheets in terminal
-    Display sheets and top ten results in a visable view
-    Prompt user to switch between different sheets and 
-    select which sheet is needed
-    """
-    # Read in file and show items in excel file sheets
-    
-    wb = Workbook()
-    wb = load_workbook(path)
+def detect_excel_sheets(path: str) -> list[str]:
+    """Return list of sheet names in an Excel file."""
+    wb = load_workbook(path, read_only=True, data_only=True)
     sheets = wb.sheetnames
+    wb.close()
+    return sheets
 
-    if len(sheets) > 1:
-        print(f"More than one sheet: {sheets}")
 
-    # sheet = workbook.active
+def preview_sheet(path: str, sheet_name: str, max_rows: int = 5) -> pd.DataFrame:
+    """Read the first few rows of a specific sheet for preview."""
+    return pd.read_excel(path, sheet_name=sheet_name, nrows=max_rows)
 
-    sheet = wb[sheets[0]] 
-    
 
-    # display top five rows
-    num_top_rows = 5
-    for row in sheet.iter_rows(min_row=1, max_row=num_top_rows):
-        # Iterate over the cells in each row to print their values
-        row_values = [cell.value for cell in row]
-        print(row_values)
-    
-    pass
+def display_sheet_preview(printer: Printer, sheet_name: str, df: pd.DataFrame) -> None:
+    """Display a Rich table preview of a sheet's first rows."""
+    table = Table(
+        title=f"Sheet: {sheet_name}",
+        show_header=True,
+        header_style="bold magenta",
+        box=box.SIMPLE,
+    )
+    for col in df.columns:
+        table.add_column(str(col), style="cyan")
+    for _, row in df.iterrows():
+        table.add_row(*[str(val) for val in row])
+    printer.decorative(table)
 
-def pdf_file(path: str):
+
+def select_excel_sheet(path: str, printer: Printer) -> str | None:
+    """Interactively select a sheet from a multi-sheet Excel file.
+
+    Returns the selected sheet name, or None for single-sheet files.
     """
-    Function to interact with pdf files including tables
-    Must present avaliable tables and give options to tune parameters
+    sheets = detect_excel_sheets(path)
 
-    """
-    pass
+    if len(sheets) <= 1:
+        return None
 
+    printer.decorative(
+        f"\n[bold yellow]Excel file has {len(sheets)} sheets:[/bold yellow]",
+        highlight=False,
+    )
 
+    for i, name in enumerate(sheets, 1):
+        printer.decorative(f"  [cyan]{i}[/cyan]. {name}", highlight=False)
 
-def file_handler(args, printer):
-    # Extension conditions
-    file_object = None
-    if args.extension == "csv" or "txt":
-        file_object = csv_handler(args.file)
-        pass
-    elif args.extension == "xlsx":
-        file_object = excel_handler(arg.file)
-        # pass
-    elif args.extension == "pdf":
-        file_object = pdf_handler(arg.file)
-        # pass
-    else:
-        print(f"{args.extension} file not supported: if you want to support this type of file raise an issue with datatalk-cli")
+    printer.decorative("")
 
-    return file_object
+    # Show preview of each sheet
+    for name in sheets:
+        try:
+            df = preview_sheet(path, name)
+            if not df.empty:
+                display_sheet_preview(printer, name, df)
+        except Exception:
+            printer.decorative(
+                f"  [dim]Could not preview sheet '{name}'[/dim]", highlight=False
+            )
 
-# path = "/Users/jackroten/Code/github.com/jackroten/datatalk-cli/tests/test_data_2_sheets_e2e.xlsx"
-# path = "/Users/jackroten/Code/github.com/jackroten/datatalk-cli/tests/test_data_floating_table_e2e.xlsx"
-# file_handler(path)
+    # Prompt user to select
+    while True:
+        try:
+            choice = input(f"Select a sheet [1-{len(sheets)}]: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            return sheets[0]
+
+        if not choice:
+            continue
+
+        try:
+            idx = int(choice)
+            if 1 <= idx <= len(sheets):
+                selected = sheets[idx - 1]
+                printer.decorative(
+                    f"\n[green]Using sheet: {selected}[/green]", highlight=False
+                )
+                return selected
+        except ValueError:
+            pass
+
+        printer.decorative(
+            f"[red]Please enter a number between 1 and {len(sheets)}[/red]",
+            highlight=False,
+        )

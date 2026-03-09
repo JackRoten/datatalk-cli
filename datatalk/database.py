@@ -12,8 +12,14 @@ def create_connection() -> duckdb.DuckDBPyConnection:
     return duckdb.connect()
 
 
-def load_data(con: duckdb.DuckDBPyConnection, path: str) -> None:
-    """Load CSV, Parquet, or Excel file into DuckDB and create a table named 'events'."""
+def load_data(con: duckdb.DuckDBPyConnection, path: str, sheet_name: str | None = None) -> None:
+    """Load CSV, Parquet, or Excel file into DuckDB and create a table named 'events'.
+
+    Args:
+        con: DuckDB connection.
+        path: Path to the data file.
+        sheet_name: For Excel files, the sheet to load. None uses the default (first sheet).
+    """
     file_path = Path(path)
     file_extension = file_path.suffix.lower()
 
@@ -27,33 +33,8 @@ def load_data(con: duckdb.DuckDBPyConnection, path: str) -> None:
             f"read_csv_auto('{path}', HEADER=TRUE);"
         )
     elif file_extension in [".xlsx", ".xls"]:
-        df = pd.read_excel(path)
-        con.execute("CREATE TABLE events AS SELECT * FROM df")
-    else:
-        raise ValueError(
-            f"Unsupported file format: {file_extension}. "
-            f"Supported formats: .csv, .parquet, .xlsx, .xls"
-        )
-
-def load_data_plus(con: duckdb.DuckDBPyConnection, obj) -> None:
-    """Load CSV, Parquet, or Excel file into DuckDB and create a table named 'events'."""
-    
-    file_obj = io.StringIO(csv_data)
-    
-    file_extension = file_path.suffix.lower()
-
-    con.execute("DROP TABLE IF EXISTS events;")
-
-
-    if file_extension == ".parquet":
-        con.execute(f"CREATE TABLE events AS SELECT * FROM read_parquet('{obj}');")
-    elif file_extension == ".csv":
-        con.execute(
-            f"CREATE TABLE events AS SELECT * FROM "
-            f"read_csv_auto('{obj}', HEADER=TRUE);"
-        )
-    elif file_extension in [".xlsx", ".xls"]:
-        df = pd.read_excel(obj)
+        kwargs = {"sheet_name": sheet_name} if sheet_name else {}
+        df = pd.read_excel(path, **kwargs)
         con.execute("CREATE TABLE events AS SELECT * FROM df")
     else:
         raise ValueError(
