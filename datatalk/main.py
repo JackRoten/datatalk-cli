@@ -7,6 +7,7 @@ import json
 import argparse
 import readline
 import termios
+from pathlib import Path
 from importlib.metadata import version, PackageNotFoundError
 from typing import Any
 
@@ -16,7 +17,8 @@ from dotenv import load_dotenv
 from rich.console import Console
 from rich.syntax import Syntax
 
-from datatalk import database, query, file_handler
+from datatalk import database, query
+from datatalk.file_handler import select_excel_sheet
 from datatalk.llm import LiteLLMProvider
 from datatalk.printer import (
     Printer,
@@ -106,33 +108,16 @@ def setup_environment(args: argparse.Namespace, printer: Printer) -> LiteLLMProv
     
     return LiteLLMProvider(model)
 
-def file_handler(args: argparse.Namespace, printer: Printer) -> tuple[Objected, stg]:
-    """
-    Handle various file formats
-    """
-    file_obj = args.file
-    file_handler
-
 def load_data(args: argparse.Namespace, printer: Printer) -> tuple[duckdb.DuckDBPyConnection, str]:
     """Load data file and return database connection with schema."""
-    con = database.create_connection()
-    database.load_data(con, args.file)
-    schema_info = database.get_schema(con)
-
-    printer.decorative("\n[green]Data loaded successfully![/green]", highlight=False)
-    
-    stats = database.get_stats(con)
-    print_stats(stats, printer, not args.no_schema)
-    
-    return con, schema_info
-
-def load_data_plus(args: argparse.Namespace, printer: Printer) -> tuple[duckdb.DuckDBPyConnection, str]:
-    """Load data file and return database connection with schema."""
-    
-    file_object = file_handler(args, printer)
+    # For Excel files, offer interactive sheet selection
+    sheet_name = None
+    file_ext = Path(args.file).suffix.lower()
+    if file_ext in (".xlsx", ".xls") and not args.prompt:
+        sheet_name = select_excel_sheet(args.file, printer)
 
     con = database.create_connection()
-    database.load_data(con, args.file)
+    database.load_data(con, args.file, sheet_name=sheet_name)
     schema_info = database.get_schema(con)
 
     printer.decorative("\n[green]Data loaded successfully![/green]", highlight=False)
